@@ -1,0 +1,542 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Lucky Draw Spinner Pro</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Canvas Confetti CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800;900&family=Space+Grotesk:wght@500;700&display=swap');
+
+    body {
+      font-family: 'Outfit', sans-serif;
+      background-color: #0b0f19;
+      color: #f3f4f6;
+      touch-action: manipulation;
+    }
+
+    .number-font {
+      font-family: 'Space Grotesk', monospace;
+    }
+
+    /* Glow Effects */
+    .glow-cyan {
+      text-shadow: 0 0 20px rgba(6, 182, 212, 0.6), 0 0 40px rgba(6, 182, 212, 0.2);
+    }
+
+    .glow-gold {
+      text-shadow: 0 0 25px rgba(245, 158, 11, 0.8), 0 0 50px rgba(245, 158, 11, 0.3);
+    }
+
+    .card-glow {
+      box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5), 0 0 20px rgba(14, 165, 233, 0.1);
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #111827;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #374151;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #4b5563;
+    }
+
+    /* Pulse animation for action button */
+    @keyframes pulse-border {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(14, 165, 233, 0.6); }
+      50% { box-shadow: 0 0 0 12px rgba(14, 165, 233, 0); }
+    }
+    .btn-pulse {
+      animation: pulse-border 2s infinite;
+    }
+
+    /* Slot machine transition effect */
+    .blur-motion {
+      filter: blur(2px);
+      transform: scale(0.95);
+      transition: all 0.05s ease-in-out;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-cyan-500 selection:text-black">
+
+  <!-- Top Navigation Header -->
+  <header class="w-full bg-gray-900/80 backdrop-blur-md border-b border-gray-800 sticky top-0 z-40 px-4 py-3">
+    <div class="max-w-6xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="p-2 bg-gradient-to-tr from-cyan-500 to-blue-600 rounded-xl shadow-lg shadow-cyan-500/20">
+          <i data-lucide="sparkles" class="w-6 h-6 text-white"></i>
+        </div>
+        <div>
+          <h1 class="text-xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-gray-200 to-cyan-400">
+            Lucky Spin Pro
+          </h1>
+          <p class="text-xs text-gray-400">Mobile Edition</p>
+        </div>
+      </div>
+
+      <!-- Quick Actions / Audio Controls -->
+      <div class="flex items-center gap-2">
+        <button id="soundToggleBtn" onclick="toggleAudio()" class="p-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white rounded-xl transition border border-gray-700 flex items-center justify-center" title="Toggle Audio">
+          <i id="soundIcon" data-lucide="volume-2" class="w-5 h-5 text-cyan-400"></i>
+        </button>
+        <button onclick="toggleHistorySidebar()" class="md:hidden p-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl transition border border-gray-700 relative">
+          <i data-lucide="history" class="w-5 h-5 text-cyan-400"></i>
+          <span id="mobileBadge" class="absolute -top-1 -right-1 bg-amber-500 text-black text-[10px] font-bold px-1.5 py-0.5 rounded-full hidden">0</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Body -->
+  <main class="max-w-6xl mx-auto w-full px-4 py-6 flex-grow grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
+    
+    <!-- Left/Center Column: Controls & Spinner Box -->
+    <section class="md:col-span-7 lg:col-span-8 flex flex-col gap-6">
+
+      <!-- Mode Selector Tabs -->
+      <div class="bg-gray-900/90 p-1.5 rounded-2xl border border-gray-800 flex gap-2">
+        <button id="tabRange" onclick="switchMode('range')" class="flex-1 py-2.5 px-4 rounded-xl text-sm font-semibold transition flex items-center justify-center gap-2 bg-cyan-600 text-white shadow-md">
+          <i data-lucide="hash" class="w-4 h-4"></i> Range Mode
+        </button>
+        <button id="tabCustom" onclick="switchMode('custom')" class="flex-1 py-2.5 px-4 rounded-xl text-sm font-semibold transition flex items-center justify-center gap-2 text-gray-400 hover:text-white">
+          <i data-lucide="list-filter" class="w-4 h-4"></i> Custom List
+        </button>
+      </div>
+
+      <!-- Input Controls Section -->
+      <div class="bg-gray-900/60 backdrop-blur border border-gray-800 rounded-2xl p-5 card-glow">
+        
+        <!-- Mode 1: Number Range -->
+        <div id="rangeInputs" class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Min Number</label>
+            <input type="number" id="minNum" value="1" min="0" class="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-cyan-500 transition number-font font-bold" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Max Number</label>
+            <input type="number" id="maxNum" value="5000" min="1" class="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-cyan-500 transition number-font font-bold" />
+          </div>
+        </div>
+
+        <!-- Mode 2: Custom List -->
+        <div id="customInputs" class="hidden">
+          <label class="block text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Enter Names, IDs, or Ticket Numbers (Comma or New Line Separated)</label>
+          <textarea id="customListText" rows="3" placeholder="e.g. TICKET-101, TICKET-102, John Doe, Jane Smith..." class="w-full bg-gray-950 border border-gray-800 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-cyan-500 transition resize-none"></textarea>
+        </div>
+
+        <!-- Extra Settings -->
+        <div class="mt-4 pt-4 border-t border-gray-800/80 flex flex-wrap items-center justify-between gap-3 text-sm">
+          <label class="flex items-center gap-2.5 cursor-pointer select-none">
+            <input type="checkbox" id="allowDuplicates" class="w-4 h-4 rounded border-gray-700 text-cyan-600 focus:ring-cyan-500 focus:ring-offset-gray-900 bg-gray-950">
+            <span class="text-gray-300 font-medium">Allow Duplicate Winners</span>
+          </label>
+          <div class="text-xs text-gray-400 flex items-center gap-1">
+            <i data-lucide="layers" class="w-3.5 h-3.5 text-cyan-400"></i>
+            <span>Pool Size: <strong id="poolCountDisplay" class="text-cyan-300">5000</strong></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Draw Display Arena -->
+      <div class="bg-gradient-to-b from-gray-900 to-gray-950 border-2 border-gray-800 rounded-3xl p-6 sm:p-10 text-center relative overflow-hidden shadow-2xl flex flex-col items-center justify-center min-h-[280px]">
+        
+        <!-- Ambient Stage Glow Background -->
+        <div class="absolute inset-0 bg-radial-gradient from-cyan-500/10 via-transparent to-transparent pointer-events-none"></div>
+
+        <span class="text-xs font-bold uppercase tracking-widest text-cyan-400/80 mb-2">Lucky Winner</span>
+
+        <!-- Number/Result Display Wheel -->
+        <div id="displayContainer" class="my-4 min-h-[100px] flex items-center justify-center w-full">
+          <div id="winnerText" class="number-font text-5xl sm:text-7xl font-black text-cyan-400 tracking-tight glow-cyan transition-all">
+            READY
+          </div>
+        </div>
+
+        <!-- Spin Action Button -->
+        <button id="spinBtn" onclick="startDraw()" class="btn-pulse mt-4 bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white font-extrabold text-lg sm:text-xl py-4 px-10 rounded-2xl shadow-xl shadow-cyan-500/25 active:scale-95 transition transform flex items-center justify-center gap-3 w-full sm:w-auto min-w-[220px]">
+          <i data-lucide="play" class="w-6 h-6 fill-white"></i> SPIN DRAW
+        </button>
+      </div>
+
+    </section>
+
+    <!-- Right Column: Winner History & Sidebar -->
+    <aside id="historySidebar" class="fixed inset-y-0 right-0 z-50 w-80 bg-gray-900 border-l border-gray-800 p-5 transform translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out md:static md:w-auto md:col-span-5 lg:col-span-4 rounded-2xl flex flex-col justify-between max-h-[85vh] shadow-2xl md:shadow-none">
+      
+      <div>
+        <!-- Sidebar Header -->
+        <div class="flex items-center justify-between pb-4 mb-4 border-b border-gray-800">
+          <div class="flex items-center gap-2">
+            <i data-lucide="trophy" class="w-5 h-5 text-amber-400"></i>
+            <h2 class="font-bold text-lg text-white">Winner History</h2>
+            <span id="winnerCountBadge" class="bg-gray-800 text-cyan-400 text-xs px-2 py-0.5 rounded-full font-bold">0</span>
+          </div>
+          <button onclick="toggleHistorySidebar()" class="md:hidden text-gray-400 hover:text-white p-1">
+            <i data-lucide="x" class="w-6 h-6"></i>
+          </button>
+        </div>
+
+        <!-- History Items Scroll List -->
+        <div id="historyList" class="space-y-2.5 overflow-y-auto max-h-[420px] pr-1">
+          <div id="emptyHistoryMsg" class="text-center py-12 text-gray-500 text-sm">
+            <i data-lucide="award" class="w-10 h-10 mx-auto mb-2 opacity-30"></i>
+            No winners drawn yet.<br>Click SPIN to pick a winner!
+          </div>
+        </div>
+      </div>
+
+      <!-- Action buttons for history management -->
+      <div class="pt-4 border-t border-gray-800 flex gap-2">
+        <button onclick="copyWinners()" class="flex-1 bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-semibold py-2.5 px-3 rounded-xl transition flex items-center justify-center gap-1.5 border border-gray-700">
+          <i data-lucide="copy" class="w-4 h-4"></i> Copy List
+        </button>
+        <button onclick="clearHistory()" class="bg-red-950/40 hover:bg-red-900/60 text-red-400 text-xs font-semibold py-2.5 px-3 rounded-xl transition flex items-center justify-center gap-1.5 border border-red-900/50">
+          <i data-lucide="trash-2" class="w-4 h-4"></i> Clear
+        </button>
+      </div>
+
+    </aside>
+
+  </main>
+
+  <!-- Overlay for Mobile Sidebar -->
+  <div id="sidebarOverlay" onclick="toggleHistorySidebar()" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 hidden md:hidden"></div>
+
+  <!-- Footer -->
+  <footer class="w-full text-center py-4 text-xs text-gray-600 border-t border-gray-900 mt-6">
+    <p>Lucky Draw Spinner Web App &bull; Optimized for Mobile & GitHub Pages</p>
+  </footer>
+
+  <!-- Message Toast Notification -->
+  <div id="toast" class="fixed bottom-5 left-1/2 -translate-x-1/2 bg-gray-800 text-white border border-gray-700 px-4 py-2.5 rounded-xl shadow-xl text-sm opacity-0 pointer-events-none transition-opacity duration-300 z-50 flex items-center gap-2">
+    <i data-lucide="info" class="w-4 h-4 text-cyan-400"></i>
+    <span id="toastMsg">Notification message</span>
+  </div>
+
+  <!-- Application Core Script -->
+  <script>
+    // App State Management
+    let currentMode = 'range'; // 'range' | 'custom'
+    let drawnWinners = [];
+    let isAudioEnabled = true;
+    let isSpinning = false;
+    let audioContext = null;
+
+    // Initialize Lucide Icons
+    lucide.createIcons();
+
+    // Sound Synthesizer setup using Web Audio API (No external sound files required)
+    function initAudio() {
+      if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      }
+    }
+
+    function playTickSound() {
+      if (!isAudioEnabled) return;
+      try {
+        initAudio();
+        const osc = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(300 + Math.random() * 150, audioContext.currentTime);
+        gain.gain.setValueAtTime(0.05, audioContext.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.04);
+        osc.connect(gain);
+        gain.connect(audioContext.destination);
+        osc.start();
+        osc.stop(audioContext.currentTime + 0.04);
+      } catch (e) {
+        // Fallback or ignore audio context restrictions on mobile user interaction
+      }
+    }
+
+    function playWinSound() {
+      if (!isAudioEnabled) return;
+      try {
+        initAudio();
+        const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+        notes.forEach((freq, idx) => {
+          const osc = audioContext.createOscillator();
+          const gain = audioContext.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, audioContext.currentTime + idx * 0.1);
+          gain.gain.setValueAtTime(0.15, audioContext.currentTime + idx * 0.1);
+          gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + idx * 0.1 + 0.3);
+          osc.connect(gain);
+          gain.connect(audioContext.destination);
+          osc.start(audioContext.currentTime + idx * 0.1);
+          osc.stop(audioContext.currentTime + idx * 0.1 + 0.3);
+        });
+      } catch (e) {}
+    }
+
+    function toggleAudio() {
+      isAudioEnabled = !isAudioEnabled;
+      const soundBtn = document.getElementById('soundIcon');
+      if (isAudioEnabled) {
+        soundBtn.setAttribute('data-lucide', 'volume-2');
+        soundBtn.classList.remove('text-gray-500');
+        soundBtn.classList.add('text-cyan-400');
+        showToast("Audio Sounds Enabled");
+      } else {
+        soundBtn.setAttribute('data-lucide', 'volume-x');
+        soundBtn.classList.remove('text-cyan-400');
+        soundBtn.classList.add('text-gray-500');
+        showToast("Audio Sounds Muted");
+      }
+      lucide.createIcons();
+    }
+
+    function switchMode(mode) {
+      if (isSpinning) return;
+      currentMode = mode;
+      
+      const tabRange = document.getElementById('tabRange');
+      const tabCustom = document.getElementById('tabCustom');
+      const rangeInputs = document.getElementById('rangeInputs');
+      const customInputs = document.getElementById('customInputs');
+
+      if (mode === 'range') {
+        tabRange.className = 'flex-1 py-2.5 px-4 rounded-xl text-sm font-semibold transition flex items-center justify-center gap-2 bg-cyan-600 text-white shadow-md';
+        tabCustom.className = 'flex-1 py-2.5 px-4 rounded-xl text-sm font-semibold transition flex items-center justify-center gap-2 text-gray-400 hover:text-white';
+        rangeInputs.classList.remove('hidden');
+        customInputs.classList.add('hidden');
+      } else {
+        tabCustom.className = 'flex-1 py-2.5 px-4 rounded-xl text-sm font-semibold transition flex items-center justify-center gap-2 bg-cyan-600 text-white shadow-md';
+        tabRange.className = 'flex-1 py-2.5 px-4 rounded-xl text-sm font-semibold transition flex items-center justify-center gap-2 text-gray-400 hover:text-white';
+        customInputs.classList.remove('hidden');
+        rangeInputs.classList.add('hidden');
+      }
+      updatePoolCount();
+    }
+
+    function getItemsPool() {
+      if (currentMode === 'range') {
+        const min = parseInt(document.getElementById('minNum').value) || 0;
+        const max = parseInt(document.getElementById('maxNum').value) || 0;
+        if (min > max) return [];
+        let items = [];
+        for (let i = min; i <= max; i++) {
+          items.push(i.toString());
+        }
+        return items;
+      } else {
+        const text = document.getElementById('customListText').value;
+        return text
+          .split(/[\n,]+/)
+          .map(item => item.trim())
+          .filter(item => item.length > 0);
+      }
+    }
+
+    function updatePoolCount() {
+      const pool = getItemsPool();
+      document.getElementById('poolCountDisplay').innerText = pool.length;
+    }
+
+    // Attach Input Event Listeners
+    document.getElementById('minNum').addEventListener('input', updatePoolCount);
+    document.getElementById('maxNum').addEventListener('input', updatePoolCount);
+    document.getElementById('customListText').addEventListener('input', updatePoolCount);
+
+    function startDraw() {
+      if (isSpinning) return;
+
+      const pool = getItemsPool();
+      const allowDuplicates = document.getElementById('allowDuplicates').checked;
+
+      if (pool.length === 0) {
+        showToast("Error: Pool is empty! Adjust inputs.");
+        return;
+      }
+
+      // Filter remaining items if duplicates are not allowed
+      let availablePool = pool;
+      if (!allowDuplicates) {
+        const drawnValues = drawnWinners.map(w => w.value);
+        availablePool = pool.filter(item => !drawnValues.includes(item));
+      }
+
+      if (availablePool.length === 0) {
+        showToast("All eligible numbers/items have been drawn!");
+        return;
+      }
+
+      // Start Spin Animation UI
+      isSpinning = true;
+      const spinBtn = document.getElementById('spinBtn');
+      const winnerText = document.getElementById('winnerText');
+
+      spinBtn.disabled = true;
+      spinBtn.classList.remove('btn-pulse');
+      spinBtn.classList.add('opacity-50', 'cursor-not-allowed');
+      winnerText.classList.add('blur-motion');
+
+      let spinCount = 0;
+      const totalSpins = 35; // Number of fast shuffles
+      let intervalSpeed = 40; // ms
+
+      function step() {
+        // Pick random temporary item for fast scrolling effect
+        const randomTemp = availablePool[Math.floor(Math.random() * availablePool.length)];
+        winnerText.innerText = randomTemp;
+        playTickSound();
+
+        spinCount++;
+        if (spinCount < totalSpins) {
+          // Slow down progressively towards the end
+          if (spinCount > totalSpins - 10) {
+            intervalSpeed += 25;
+          }
+          setTimeout(step, intervalSpeed);
+        } else {
+          // Final Winner Picked
+          const winnerValue = availablePool[Math.floor(Math.random() * availablePool.length)];
+          finishDraw(winnerValue);
+        }
+      }
+
+      step();
+    }
+
+    function finishDraw(winner) {
+      const winnerText = document.getElementById('winnerText');
+      const spinBtn = document.getElementById('spinBtn');
+
+      winnerText.classList.remove('blur-motion');
+      winnerText.innerText = winner;
+
+      // Golden win glow effect
+      winnerText.className = "number-font text-5xl sm:text-7xl font-black text-amber-400 tracking-tight glow-gold transition-all scale-105";
+
+      playWinSound();
+      triggerConfetti();
+
+      // Add to History state
+      const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      drawnWinners.unshift({ value: winner, time: timestamp });
+
+      updateHistoryUI();
+
+      // Reset Button State
+      setTimeout(() => {
+        spinBtn.disabled = false;
+        spinBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        spinBtn.classList.add('btn-pulse');
+        winnerText.className = "number-font text-5xl sm:text-7xl font-black text-cyan-400 tracking-tight glow-cyan transition-all";
+        isSpinning = false;
+      }, 1200);
+    }
+
+    function triggerConfetti() {
+      if (typeof confetti === 'function') {
+        confetti({
+          particleCount: 100,
+          spread: 70,
+          origin: { y: 0.6 }
+        });
+      }
+    }
+
+    function updateHistoryUI() {
+      const historyList = document.getElementById('historyList');
+      const emptyMsg = document.getElementById('emptyHistoryMsg');
+      const countBadge = document.getElementById('winnerCountBadge');
+      const mobileBadge = document.getElementById('mobileBadge');
+
+      countBadge.innerText = drawnWinners.length;
+      mobileBadge.innerText = drawnWinners.length;
+      if (drawnWinners.length > 0) mobileBadge.classList.remove('hidden');
+
+      if (drawnWinners.length === 0) {
+        historyList.innerHTML = '';
+        historyList.appendChild(emptyMsg);
+        return;
+      }
+
+      // Build updated list HTML
+      historyList.innerHTML = drawnWinners.map((item, index) => `
+        <div class="bg-gray-950 border border-gray-800 rounded-xl p-3 flex items-center justify-between text-sm animate-fade-in">
+          <div class="flex items-center gap-3">
+            <span class="w-6 h-6 rounded-full bg-cyan-950 text-cyan-400 border border-cyan-800/60 font-bold text-xs flex items-center justify-center">
+              #${drawnWinners.length - index}
+            </span>
+            <span class="font-extrabold text-white number-font text-base">${item.value}</span>
+          </div>
+          <span class="text-[11px] text-gray-500">${item.time}</span>
+        </div>
+      `).join('');
+    }
+
+    function clearHistory() {
+      if (drawnWinners.length === 0) return;
+      if (confirm("Clear all recorded winners?")) {
+        drawnWinners = [];
+        updateHistoryUI();
+        document.getElementById('mobileBadge').classList.add('hidden');
+        showToast("History cleared.");
+      }
+    }
+
+    function copyWinners() {
+      if (drawnWinners.length === 0) {
+        showToast("No winners to copy!");
+        return;
+      }
+      const textToCopy = drawnWinners.map((w, idx) => `${drawnWinners.length - idx}. ${w.value} (${w.time})`).join('\n');
+      
+      // Copy to clipboard fallback
+      const tempArea = document.createElement('textarea');
+      tempArea.value = textToCopy;
+      document.body.appendChild(tempArea);
+      tempArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(tempArea);
+
+      showToast("Winners copied to clipboard!");
+    }
+
+    function toggleHistorySidebar() {
+      const sidebar = document.getElementById('historySidebar');
+      const overlay = document.getElementById('sidebarOverlay');
+      
+      sidebar.classList.toggle('translate-x-full');
+      overlay.classList.toggle('hidden');
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toastMsg');
+      toastMsg.innerText = message;
+      toast.classList.remove('opacity-0', 'pointer-events-none');
+      
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'pointer-events-none');
+      }, 2500);
+    }
+
+    // Initialize Pool Count on Load
+    updatePoolCount();
+  </script>
+</body>
+</html>
+```
